@@ -96,19 +96,28 @@ for episode in range(episodes):
         action = select_action(state, epsilon)
         next_state, reward, done, _, _ = env.step(action)
 
+        # Penalize being far from center during flight
+        reward -= abs(next_state[0]) * 2  # next_state[0] is horizontal position (x)
+
         # Check for stable landing
-        landed = next_state[6] == 1 and next_state[7] == 1
-        stable = abs(next_state[1]) < 0.1 and abs(next_state[3]) < 0.1
+        landed = next_state[6] == 1 and next_state[7] == 1  # both legs on ground
+        stable = abs(next_state[1]) < 0.1 and abs(next_state[3]) < 0.1  # low vertical speed and rotation
 
-        if landed and stable:
-            done = True
-            reward += 100  # Optional: reward for finishing calmly
+        if landed:
+            x_position = next_state[0]
+            # Penalize if landing outside central zone
+            if abs(x_position) > 0.2:
+                done = True
+                reward -= 100  # landed but outside zone
+            elif stable:
+                done = True
+                reward += 100  # clean central landing
 
-         # Simulate running out of gas
+        # Simulate running out of gas
         step_count += 1
         if step_count >= max_gas_steps:
             done = True  # Force the episode to end
-            reward -= 100  # Optionally penalize for running out of gas
+            reward -= 100  # Penalize running out of gas
         
         # Store transition in memory
         memory.append((state, action, reward, next_state, done))
